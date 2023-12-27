@@ -1,0 +1,40 @@
+Table players{
+  id serial [primary key, not null]
+  name varchar [unique, not null]
+  elo1 int [not null]
+  elo2 int [not null]
+}
+
+Table singles{
+  id serial [primary key, not null]
+  player_id_win int [not null]
+  player_id_loss int [not null]
+  old_elo_win int [not null]
+  old_elo_lose int [not null]
+  time timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table doubles{
+  id serial [primary key, not null]
+  player_id_win1 int [not null]
+  player_id_win2 int [not null]
+  player_id_loss1 int [not null]
+  player_id_loss2 int [not null]
+  old_elo_win1 int [not null]
+  old_elo_win2 int [not null]
+  old_elo_lose1 int [not null]
+  old_elo_lose2 int [not null]
+  time timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Ref: "players"."id" < "singles"."player_id_win"
+
+Ref: "players"."id" < "singles"."player_id_loss"
+
+Ref: "players"."id" < "doubles"."player_id_win1"
+
+Ref: "players"."id" < "doubles"."player_id_win2"
+
+Ref: "players"."id" < "doubles"."player_id_loss1"
+
+Ref: "players"."id" < "doubles"."player_id_loss2"

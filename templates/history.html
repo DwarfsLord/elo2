@@ -1,0 +1,16 @@
+{% include "header1.html" %}
+{% include "header2.html" %}
+<div class='config'>
+    <div class='new_game'>
+        Stats: {{name}}
+    </div>
+</div>
+<div class='config'>
+    <div class='new_game'>
+        <a href='/'>Return</a>
+    </div>
+</div>
+</div>
+<div class='box graph'> 1v1: {{elo1}} </div>
+<div class='box graph'> 2v2: {{elo2}} </div>
+{% include "footer.html" %}

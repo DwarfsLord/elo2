@@ -1,0 +1,19 @@
+{% include "header1.html" %}
+{% include "header_index.html" %}
+{% include "header2.html" %}
+<div class="new_player">
+    <a href="add_player">Add player</a>
+</div>
+<div class="config">
+    <div class="new_game single">
+        <a href="add_game1">Enter 1v1</a>
+    </div>
+    <div class="new_game double">
+        <a href="add_game2">Enter 2v2</a>
+    </div>
+</div>
+</div>
+{% for player in players%}
+{% include "player.html" %}
+{% endfor %}
+{% include "footer.html" %}

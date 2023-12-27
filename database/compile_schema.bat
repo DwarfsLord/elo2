@@ -1,0 +1,1 @@
+wsl ./compile_schema.sh

@@ -1,0 +1,35 @@
+{% include "header1.html" %}
+{% include "header2.html" %}
+<div class='config'>
+    <div class='new_game'>
+        Entering 2v2 game...
+    </div>
+</div>
+</div>
+<form action="/" class='box add_game'>
+    <div class='add_game_label'>
+        <label for="field_winner">Winner:</label>
+    </div>
+    <div class='add_game_list'>
+        <input autofocus type="text" required="required" value="" id="field_winner" name="winner1" class="field" list="players" pattern="^({% for player in players%}{{player.name}}{% if forloop.last %}{% else %}|{% endif %}{% endfor %})$">
+    </div>
+    <div class='add_game_list'>
+        <input type="text" required="required" value="" id="field_winner" name="winner2" class="field" list="players" pattern="^({% for player in players%}{{player.name}}{% if forloop.last %}{% else %}|{% endif %}{% endfor %})$">
+    </div>
+    <div class='add_game_label'>
+        <label for="field_loser">Loser:</label>
+    </div>
+    <div class='add_game_list'>
+        <input type="text" required="required" value="" id="field_winner" name="loser1" class="field" list="players" pattern="^({% for player in players%}{{player.name}}{% if forloop.last %}{% else %}|{% endif %}{% endfor %})$">
+    </div>
+    <div class='add_game_list'>
+        <input type="text" required="required" value="" id="field_winner" name="loser2" class="field" list="players" pattern="^({% for player in players%}{{player.name}}{% if forloop.last %}{% else %}|{% endif %}{% endfor %})$">
+        <datalist id="players">
+            {% for player in players %}<option value='{{player.name}}'>{% endfor %}
+        </datalist>
+    </div>
+    <div class='add_game_ack'>
+        <input type="submit" value="Go!" class="submit">
+    </div>
+</form>
+{% include "footer.html" %}

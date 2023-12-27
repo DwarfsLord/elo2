@@ -1,0 +1,20 @@
+{% include "header1.html" %}
+{% include "header2.html" %}
+            <div class='config'>
+                <div class='new_game'>
+                    Adding player...
+                </div>
+            </div>
+        </div>
+        <form action="/" class='box add_player'>
+            <div class='add_player_label'>
+                <label for="field_name">Name:</label>
+            </div>
+            <div class='add_player_field'>
+                <input type="text" id="field_name" name="add_player_name" class="field">
+            </div>
+            <div class='add_player_ack'>
+                <input type="submit" value="Go!" class="submit">
+            </div>
+        </form>
+{% include "footer.html" %}

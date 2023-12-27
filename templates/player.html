@@ -1,0 +1,9 @@
+<div class="box player">
+    <div id="rank">{{ player.rank }}</div>
+    <div id="name">{{ player.name }}</div>
+    <div id="rating">
+        <div class="{{ player.elo1_type }}" style="border-radius: 10px;">{{ player.elo1 }}</div>
+        <div class="{{ player.elo2_type }}" style="border-radius: 10px;">{{ player.elo2 }}</div>
+    </div>
+    <a href="history?player_id={{ player.id }}" class="player_hist"><span class="link-spanner"></span></a>
+</div>

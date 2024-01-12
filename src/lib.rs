@@ -16,7 +16,7 @@ lazy_static! {
             Ok(t) => t,
             Err(e) => {
                 println!("Parsing error(s): {}", e);
-                ::std::/home/chaim/FDTech/elo2/src/entitiesprocess::exit(1);
+                std::process::exit(1);
             }
         };
         tera.autoescape_on(vec!["html", ".sql"]);

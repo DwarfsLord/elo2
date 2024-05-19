@@ -182,7 +182,7 @@ pub async fn get_player(db: Data<DatabaseConnection>, id: i32) -> Context {
         .map(|g| Game1Details {
             date: g.0.time.format("%d-%m %H:%M").to_string(),
             opponent: g.1.unwrap().name,
-            elo_diff: (g.0.old_elo_win - g.0.old_elo_lose).to_string(),
+            elo_diff: (g.0.old_elo_lose - g.0.old_elo_win).to_string(),
             win: false,
             internal_datetime: g.0.time,
         })

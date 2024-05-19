@@ -194,7 +194,7 @@ pub async fn get_player(db: Data<DatabaseConnection>, id: i32) -> Context {
 
     games1.reverse();
 
-    let games1 = games1.chunks(PLAYER_DETAIL_PAGINATION_SIZE).next().unwrap().to_vec();
+    let games1 = games1.chunks(PLAYER_DETAIL_PAGINATION_SIZE).next().unwrap_or(&[]).to_vec();
 
     // dbg!(&games1);
 

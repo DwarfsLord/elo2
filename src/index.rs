@@ -4,15 +4,21 @@ use actix_web::{
 };
 
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set, Statement,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect,
+    RelationTrait, Set, Statement,
 };
 use serde::{Deserialize, Serialize};
 use tera::Context;
 
-use crate::{entities::prelude::*, EloType, Player};
+use crate::{
+    entities::{self, prelude::*},
+    EloType, Game1Details, Player, PlayerDetails,
+};
 
 const CALC_ELO_MAX: f64 = 50.;
 const CALC_ELO_A: f64 = 43.4294;
+
+const PLAYER_DETAIL_PAGINATION_SIZE: usize = 10;
 
 #[derive(Serialize)]
 struct IndexPlayers {
@@ -56,17 +62,25 @@ impl IndexPlayers {
     }
 }
 
-impl From<crate::entities::players::Model> for Player{
+impl From<crate::entities::players::Model> for Player {
     fn from(value: crate::entities::players::Model) -> Self {
-        Self { name: value.name, id: value.id, rank: 0, elo1: value.elo1, elo1_type: EloType::Single, elo2: value.elo2, elo2_type: EloType::Double }
-    }
-} 
-
-impl Player {
-    fn get_context(&self) -> Result<Context, tera::Error> {
-        Context::from_serialize(&self)
+        Self {
+            name: value.name,
+            id: value.id,
+            rank: 0,
+            elo1: value.elo1,
+            elo1_type: EloType::Single,
+            elo2: value.elo2,
+            elo2_type: EloType::Double,
+        }
     }
 }
+
+// impl Player {
+//     fn get_context(&self) -> Result<Context, tera::Error> {
+//         Context::from_serialize(&self)
+//     }
+// }
 
 #[derive(Deserialize)]
 // #[serde(rename_all = "snake_case")]
@@ -90,7 +104,9 @@ pub async fn route(db: Data<DatabaseConnection>, query: Query<IndexInput>) -> im
         add_game_1(&db, winner, loser).await;
     }
 
-    if let (Some(winner1), Some(winner2), Some(loser1), Some(loser2)) = (query.winner1, query.winner2, query.loser1, query.loser2) {
+    if let (Some(winner1), Some(winner2), Some(loser1), Some(loser2)) =
+        (query.winner1, query.winner2, query.loser1, query.loser2)
+    {
         add_game_2(&db, winner1, winner2, loser1, loser2).await;
     }
 
@@ -125,13 +141,72 @@ pub async fn get_players(db: Data<DatabaseConnection>) -> Context {
 pub async fn get_player(db: Data<DatabaseConnection>, id: i32) -> Context {
     let db: &DatabaseConnection = &db;
 
-    let players: Player = Players::find_by_id(id)
-        .one(db)
+    let player = Players::find_by_id(id).one(db).await.unwrap().unwrap();
+
+    // let alias = Alias::new("winner");
+    let wins1 = entities::singles::Entity::find()
+        .filter(entities::singles::Column::PlayerIdWin.eq(player.id))
+        .join(
+            sea_orm::JoinType::Join,
+            entities::singles::Relation::Players2.def(),
+        )
+        .select_also(entities::players::Entity)
+        .all(db)
         .await
-        .unwrap()
-        .unwrap()
-        .into();
-    players.get_context().unwrap()
+        .unwrap();
+
+    let loss1 = entities::singles::Entity::find()
+        .filter(entities::singles::Column::PlayerIdLoss.eq(player.id))
+        .join(
+            sea_orm::JoinType::Join,
+            entities::singles::Relation::Players1.def(),
+        )
+        .select_also(entities::players::Entity)
+        .all(db)
+        .await
+        .unwrap();
+
+    let wins1: Vec<Game1Details> = wins1
+        .into_iter()
+        .map(|g| Game1Details {
+            date: g.0.time.format("%d-%m %H:%M").to_string(),
+            opponent: g.1.unwrap().name,
+            elo_diff: (g.0.old_elo_win - g.0.old_elo_lose).to_string(),
+            win: true,
+            internal_datetime: g.0.time,
+        })
+        .collect();
+
+    let loss1: Vec<Game1Details> = loss1
+        .into_iter()
+        .map(|g| Game1Details {
+            date: g.0.time.format("%d-%m %H:%M").to_string(),
+            opponent: g.1.unwrap().name,
+            elo_diff: (g.0.old_elo_win - g.0.old_elo_lose).to_string(),
+            win: false,
+            internal_datetime: g.0.time,
+        })
+        .collect();
+
+    let mut games1 = [wins1, loss1].concat();
+
+    games1.sort_unstable_by_key(|g|g.internal_datetime);
+
+    games1.reverse();
+
+    let games1 = games1.chunks(PLAYER_DETAIL_PAGINATION_SIZE).next().unwrap().to_vec();
+
+    // dbg!(&games1);
+
+    let player_details = PlayerDetails {
+        id: player.id,
+        name: player.name,
+        elo1: player.elo1,
+        elo2: player.elo2,
+        games1,
+        games2: vec![],
+    };
+    Context::from_serialize(player_details).unwrap()
 }
 
 async fn add_player(db: &DatabaseConnection, name: String) {
@@ -160,13 +235,16 @@ async fn add_game_1(db: &DatabaseConnection, winner: String, loser: String) {
         .unwrap()
         .unwrap();
 
-    crate::entities::singles::ActiveModel{
+    crate::entities::singles::ActiveModel {
         player_id_win: Set(winner.id),
         player_id_loss: Set(loser.id),
         old_elo_win: Set(winner.elo1),
         old_elo_lose: Set(loser.elo1),
         ..Default::default()
-    }.insert(db).await.unwrap();
+    }
+    .insert(db)
+    .await
+    .unwrap();
 
     let loser_chance = 1. / (((winner.elo1 as f64 - loser.elo1 as f64) / CALC_ELO_A).exp() + 1.);
 
@@ -183,8 +261,13 @@ async fn add_game_1(db: &DatabaseConnection, winner: String, loser: String) {
     loser.update(db).await.unwrap();
 }
 
-
-async fn add_game_2(db: &DatabaseConnection, winner1: String, winner2: String, loser1: String, loser2: String) {
+async fn add_game_2(
+    db: &DatabaseConnection,
+    winner1: String,
+    winner2: String,
+    loser1: String,
+    loser2: String,
+) {
     let winner1 = Players::find()
         .filter(crate::entities::players::Column::Name.eq(winner1))
         .one(db)
@@ -210,7 +293,7 @@ async fn add_game_2(db: &DatabaseConnection, winner1: String, winner2: String, l
         .unwrap()
         .unwrap();
 
-    crate::entities::doubles::ActiveModel{
+    crate::entities::doubles::ActiveModel {
         player_id_win1: Set(winner1.id),
         player_id_win2: Set(winner2.id),
         player_id_loss1: Set(loser1.id),
@@ -220,7 +303,10 @@ async fn add_game_2(db: &DatabaseConnection, winner1: String, winner2: String, l
         old_elo_lose1: Set(loser1.elo2),
         old_elo_lose2: Set(loser2.elo2),
         ..Default::default()
-    }.insert(db).await.unwrap();
+    }
+    .insert(db)
+    .await
+    .unwrap();
 
     let winner_elo = join_elo(winner1.elo2, winner2.elo2);
     let loser_elo = join_elo(loser1.elo2, loser2.elo2);
@@ -229,8 +315,8 @@ async fn add_game_2(db: &DatabaseConnection, winner1: String, winner2: String, l
 
     let gain = (loser_chance * CALC_ELO_MAX).ceil() as i32;
 
-    let (w1,w2) = split_elo(winner1.elo2, winner2.elo2, gain * 2);
-    let (l1,l2) = split_elo(loser1.elo2, loser2.elo2, gain * -2);
+    let (w1, w2) = split_elo(winner1.elo2, winner2.elo2, gain * 2);
+    let (l1, l2) = split_elo(loser1.elo2, loser2.elo2, gain * -2);
 
     set_elo2(db, w1, winner1.into()).await;
     set_elo2(db, w2, winner2.into()).await;
@@ -238,19 +324,20 @@ async fn add_game_2(db: &DatabaseConnection, winner1: String, winner2: String, l
     set_elo2(db, l2, loser2.into()).await;
 }
 
-fn join_elo(a: i32, b: i32) -> f64{
+fn join_elo(a: i32, b: i32) -> f64 {
     let a = a as f64;
     let b = b as f64;
-    a.max(b).min(a.min(b)+(a-b).abs()*0.5+((a-b).abs() * 0.03).powi(2))
+    a.max(b)
+        .min(a.min(b) + (a - b).abs() * 0.5 + ((a - b).abs() * 0.03).powi(2))
 }
 
-fn split_elo(a: i32, b: i32, gain: i32) -> (i32, i32){
-    let a = a ;
+fn split_elo(a: i32, b: i32, gain: i32) -> (i32, i32) {
+    let a = a;
     let b = b;
 
     const DIVISOR: f64 = 70.;
 
-    let mut responsibility_a = 1. / (1. + ((a as f64 - b as f64)/DIVISOR).exp2());
+    let mut responsibility_a = 1. / (1. + ((a as f64 - b as f64) / DIVISOR).exp2());
     if gain < 0 {
         responsibility_a = 1. - responsibility_a;
     }
@@ -259,19 +346,19 @@ fn split_elo(a: i32, b: i32, gain: i32) -> (i32, i32){
     let mut res_b = ((1. - responsibility_a) * gain as f64).round() as i32;
 
     //Guarantee change
-    if res_a == 0{
+    if res_a == 0 {
         res_a += gain.signum();
         res_b -= gain.signum();
-    }else if res_b == 0{
+    } else if res_b == 0 {
         res_b += gain.signum();
         res_a -= gain.signum();
     }
 
     res_a += a;
     res_b += b;
-    
+
     //Guarantee overall positive change (for victors)
-    if gain > 0{
+    if gain > 0 {
         let old_elo = join_elo(a, b);
         while old_elo > join_elo(res_a, res_b) {
             res_a += (res_a - res_b).signum();
@@ -282,7 +369,11 @@ fn split_elo(a: i32, b: i32, gain: i32) -> (i32, i32){
     (res_a, res_b)
 }
 
-async fn set_elo2(db: &DatabaseConnection, new_elo: i32, mut model: crate::entities::players::ActiveModel) {
+async fn set_elo2(
+    db: &DatabaseConnection,
+    new_elo: i32,
+    mut model: crate::entities::players::ActiveModel,
+) {
     model.elo2 = Set(new_elo);
     model.update(db).await.unwrap();
 }

@@ -11,6 +11,26 @@
     </div>
 </div>
 </div>
-<div class='box graph'> 1v1: {{elo1}} </div>
+<div class='box graph'>
+    <table>
+        <caption>1v1: {{elo1}}</caption>
+        <thead>
+            <tr>
+                <th>Opponent</th>
+                <th>ELO</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for game in games1 %}
+            <tr class="{{ game.win }}">
+                <td>{{ game.opponent }}</td>
+                <td>{{ game.elo_diff }}</td>
+                <td>{{ game.date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 <div class='box graph'> 2v2: {{elo2}} </div>
 {% include "footer.html" %}

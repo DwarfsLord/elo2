@@ -179,6 +179,30 @@ body {
     position: absolute;
 }
 
+table {
+    border-collapse: collapse;
+}
+
+caption {
+    font-size: 35;
+}
+
+thead {
+    font-size: 25;
+}
+
+tbody {
+    font-size: 19;
+}
+
+tr.true {
+    background-color: #DFD;
+}
+
+tr.false {
+    background-color: #FDD;
+}
+
 @media only screen and (min-width: 350px) {
     .box{
         width: 310px;

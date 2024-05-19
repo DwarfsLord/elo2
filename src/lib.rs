@@ -7,7 +7,9 @@ use sea_orm::{ConnectOptions, Database, DatabaseConnection};
 use serde:: {Serialize, Deserialize};
 use tera::Tera;
 
+#[allow(unused_imports)]
 pub(crate) mod entities;
+
 mod index;
 
 lazy_static! {
@@ -45,6 +47,30 @@ struct Player {
     elo1_type: EloType,
     elo2: i32,
     elo2_type: EloType,
+}
+
+#[derive(Serialize)]
+struct PlayerDetails {
+    name: String,
+    id: i32,
+    elo1: i32,
+    elo2: i32,
+    games1: Vec<Game1Details>,
+    games2: Vec<Game2Details>,
+}
+
+#[derive(Serialize, Debug, Clone)]
+struct Game1Details{
+    opponent: String,
+    elo_diff: String,
+    date: String,
+    win: bool,
+    internal_datetime: chrono::NaiveDateTime,
+}
+
+#[derive(Serialize)]
+struct Game2Details{
+    
 }
 
 #[derive(Serialize)]

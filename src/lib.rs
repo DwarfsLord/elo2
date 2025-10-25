@@ -2,9 +2,10 @@ use actix_web::{
     web::{resource, Data},
     App, HttpResponse, HttpServer, Responder,
 };
+use clap::Parser;
 use lazy_static::lazy_static;
 use sea_orm::{ConnectOptions, Database, DatabaseConnection};
-use serde:: {Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use tera::Tera;
 
 #[allow(unused_imports)]
@@ -26,13 +27,26 @@ lazy_static! {
     };
 }
 
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+pub struct Args {
+    /// Name of the person to greet
+    #[arg(short, long, default_value = "elo_k")]
+    database_name: String,
+
+    /// Number of times to greet
+    #[arg(short, long, default_value_t = 8000)]
+    port: u16,
+}
+
 #[derive(Deserialize)]
-pub struct Settings{
+pub struct Settings {
     pub servers: Vec<Server>,
 }
 
 #[derive(Deserialize)]
-pub struct Server{
+pub struct Server {
     pub name: String,
     pub port: u16,
     pub doubles: bool,
@@ -60,7 +74,7 @@ struct PlayerDetails {
 }
 
 #[derive(Serialize, Debug, Clone)]
-struct Game1Details{
+struct Game1Details {
     opponent: String,
     elo_diff: String,
     date: String,
@@ -69,9 +83,7 @@ struct Game1Details{
 }
 
 #[derive(Serialize)]
-struct Game2Details{
-    
-}
+struct Game2Details {}
 
 #[derive(Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -85,11 +97,12 @@ pub struct HistoryInput {
     player_id: i32,
 }
 
-pub async fn start_server() {
+pub async fn start_server(args: Args) {
     let db = Data::new(
-        Database::connect(ConnectOptions::new(
-            "postgres://local:local@localhost:5432/elo_k".to_owned(),
-        ))
+        Database::connect(ConnectOptions::new(format!(
+            "postgres://local:local@localhost:5432/{}",
+            args.database_name
+        )))
         .await
         .unwrap(),
     );
@@ -104,7 +117,7 @@ pub async fn start_server() {
             .service(resource("/favicon.ico").to(favicon))
             .service(resource("/style.css").to(style))
     })
-    .bind("0.0.0.0:8000")
+    .bind(("0.0.0.0", args.port))
     .unwrap()
     .run()
     .await

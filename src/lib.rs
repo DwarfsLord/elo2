@@ -104,7 +104,7 @@ pub async fn start_server() {
             .service(resource("/favicon.ico").to(favicon))
             .service(resource("/style.css").to(style))
     })
-    .bind("localhost:8000")
+    .bind("0.0.0.0:8000")
     .unwrap()
     .run()
     .await
